@@ -66,6 +66,10 @@ where
         let mut control_reg = 0;
         let mut control_bytes = [0u8; 4];
 
+        // // Send the autorestart command.
+        // let restart_cmd = (ControlRegBit::AutoRestart as u32).to_le_bytes();
+        // self.shell_write(&restart_cmd, T::BASE_ADDR)?;
+
         // Wait for IDLE.
         while control_reg & ControlRegBit::Idle as u32 != ControlRegBit::Idle as u32 {
             self.shell_read(&mut control_bytes, T::BASE_ADDR)?;

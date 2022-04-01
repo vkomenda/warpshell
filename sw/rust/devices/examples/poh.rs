@@ -20,6 +20,8 @@ const OUT_HASH: [u8; HASH_BYTES] = [
     0x84, 0xb5, 0x60, 0x4d, 0x11, 0xca, 0xaf, 0xb9, 0x0a, 0xb9, 0x48, 0x56, 0xc4, 0xe1, 0xdd, 0x7a,
 ];
 
+const NUM_HASHES: usize = 16;
+
 impl PohCoreParam for VariumC1100 {
     const BASE_ADDR: u64 = 0x0005_0000;
 }
@@ -29,13 +31,15 @@ fn main() {
 
     let varium = VariumC1100::new().expect("cannot construct device");
 
-    let mut hashes_buffer = DmaBuffer::new(HASH_BYTES);
-    let mut num_iters_buffer = DmaBuffer::new(8);
+    let mut hashes_buffer = DmaBuffer::new(NUM_HASHES);
+    let mut num_iters_buffer = DmaBuffer::new(NUM_HASHES);
 
-    hashes_buffer.get_mut().extend_from_slice(&IN_HASH);
-    num_iters_buffer
-        .get_mut()
-        .extend_from_slice(&1u64.to_le_bytes());
+    for _ in 0..NUM_HASHES {
+        hashes_buffer.get_mut().extend_from_slice(&IN_HASH);
+        num_iters_buffer
+            .get_mut()
+            .extend_from_slice(&1u64.to_le_bytes());
+    }
 
     let addrs = DataBaseAddrs {
         in_hashes_base: 0,
@@ -43,6 +47,7 @@ fn main() {
         out_hashes_base: 8192,
     };
 
+    println!("Init...");
     varium.init_poh(addrs, 1).expect("init");
 
     // Write the inputs to the card.
@@ -53,9 +58,10 @@ fn main() {
         .dma_write(&num_iters_buffer, addrs.num_iters_base)
         .expect("write num_iters");
 
+    println!("Run...");
     varium.run_poh().expect("run");
 
-    std::thread::sleep(std::time::Duration::from_secs(1));
+    println!("Return...");
     varium
         .dma_read(&mut hashes_buffer, addrs.out_hashes_base)
         .expect("read hashes");
