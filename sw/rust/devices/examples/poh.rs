@@ -30,7 +30,7 @@ const OUT_HASH: [u8; HASH_BYTES] = [
     0x84, 0xb5, 0x60, 0x4d, 0x11, 0xca, 0xaf, 0xb9, 0x0a, 0xb9, 0x48, 0x56, 0xc4, 0xe1, 0xdd, 0x7a,
 ];
 
-const NUM_HASHES: usize = 16;
+const NUM_HASHES: usize = 18;
 
 impl PohCoreParam for VariumC1100 {
     const BASE_ADDR: u64 = 0x0005_0000;
@@ -41,19 +41,15 @@ fn main() {
 
     let varium = VariumC1100::new().expect("cannot construct device");
 
-    // let mut control_reg = 0;
-    // let mut control_bytes = [0u8; 4];
-    // varium
-    //     .shell_read(&mut control_bytes, VariumC1100::BASE_ADDR)
-    //     .expect("control_reg read");
-    // control_reg = u32::from_le_bytes(control_bytes);
-    // println!("control_reg = {}", control_reg);
-
     let mut hashes_buffer = DmaBuffer::new(NUM_HASHES);
     let mut num_iters_buffer = DmaBuffer::new(NUM_HASHES);
+    let mut in_hash_le = IN_HASH.clone();
+    in_hash_le.reverse();
+    let mut out_hash_le = OUT_HASH.clone();
+    out_hash_le.reverse();
 
-    for _ in 0..NUM_HASHES {
-        hashes_buffer.get_mut().extend_from_slice(&ONE_HASH);
+    for i in 0..NUM_HASHES {
+        hashes_buffer.get_mut().extend_from_slice(&in_hash_le);
         num_iters_buffer
             .get_mut()
             .extend_from_slice(&1u64.to_le_bytes());
@@ -66,7 +62,7 @@ fn main() {
     };
 
     println!("Init...");
-    varium.init_poh(addrs, 1).expect("init");
+    varium.init_poh(addrs, NUM_HASHES as u32).expect("init");
 
     // Write the inputs to the card.
     varium
@@ -75,9 +71,6 @@ fn main() {
     varium
         .dma_write(&num_iters_buffer, addrs.num_iters_base)
         .expect("write num_iters");
-    varium
-        .dma_write(&hashes_buffer, addrs.out_hashes_base)
-        .expect("overwrite out_hashes");
 
     println!("input hashes {}", hex::encode(hashes_buffer.get()));
     println!("Run...");
@@ -91,22 +84,8 @@ fn main() {
     println!("output hashes {}", hex::encode(hashes_buffer.get()));
     for i in 0..NUM_HASHES {
         let hash = &hashes_buffer.as_slice()[HASH_BYTES * i..HASH_BYTES * (i + 1)];
-        println!("got {}", hex::encode(hash));
-        assert_eq!(hash, OUT_HASH);
+        println!("{}. got {}", i, hex::encode(hash));
+        assert_eq!(hash, out_hash_le);
     }
-
-    // CUT
-
-    // let mut buffer = DmaBuffer::new(12288);
-    // for i in 0..12288 {
-    //     buffer.get_mut().push(1);
-    // }
-    // varium.dma_write(&buffer, 0).expect("write mem");
-    // for i in 0..12288 {
-    //     buffer.get_mut().push(0);
-    // }
-    // varium.dma_read(&mut buffer, 0).expect("read mem");
-
-    // let mem = &buffer.as_slice()[0..12288];
-    // println!("mem {}", hex::encode(mem));
+    println!("Success!");
 }
