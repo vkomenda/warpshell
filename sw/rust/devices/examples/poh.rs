@@ -44,9 +44,7 @@ fn main() {
     let mut hashes_buffer = DmaBuffer::new(NUM_HASHES);
     let mut num_iters_buffer = DmaBuffer::new(NUM_HASHES);
     let mut in_hash_le = IN_HASH.clone();
-    in_hash_le.reverse();
     let mut out_hash_le = OUT_HASH.clone();
-    out_hash_le.reverse();
 
     for i in 0..NUM_HASHES {
         hashes_buffer.get_mut().extend_from_slice(&in_hash_le);
